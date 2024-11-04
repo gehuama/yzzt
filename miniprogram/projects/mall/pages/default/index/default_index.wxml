@@ -1,7 +1,7 @@
 <view class="main">
 
 	<view class="up">
-		<image mode="widthFix" src="../../../images/home.png" />
+		<image mode="widthFix" src="../../../images/home.jpg" />
 	</view>
 	<view wx:if="{{!isLoad}}" class="margin-top load loading text-l load-project"></view>
 	<view wx:else class="down">
