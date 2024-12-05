@@ -18,11 +18,15 @@ class AdminProductService extends BaseProjectAdminService {
 
 
 	async statCate1Cnt(id) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		if (!id) return;
+		let cnt = await ProductModel.count({ PRODUCT_CATE_ID: id });
+		await Cate1Model.edit(id, { CATE1_CNT: cnt });
 	}
 
 	async statCate2Cnt(id) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		if (!id) return;
+		let cnt = await ProductModel.count({ PRODUCT_CATE_ID: id });
+		await Cate2Model.edit(id, { CATE2_CNT: cnt });
 	}
 
 	/**添加店铺*/
@@ -36,13 +40,57 @@ class AdminProductService extends BaseProjectAdminService {
 	}) {
 
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		// 重复性判断
+		let where = {
+			PRODUCT_TITLE: title,
+		}
+		if (await ProductModel.count(where))
+			this.AppError('该标题已经存在');
+
+		// 赋值 
+		let data = {};
+		data.PRODUCT_TITLE = title;
+		data.PRODUCT_CATE_ID = cateId;
+		data.PRODUCT_CATE_NAME = cateName;
+		data.PRODUCT_ORDER = order;
+		data.PRODUCT_FIRST = first.toUpperCase() || pinyin.getFirst(title);
+
+		data.PRODUCT_OBJ = dataUtil.dbForms2Obj(forms);
+		data.PRODUCT_FORMS = forms;
+
+		let id = await ProductModel.insert(data);
+
+		let qr = await this.genDetailQr('product', id);
+		ProductModel.edit(id, { PRODUCT_QR: qr });
+
+		// 异步统计
+		this.statCate1Cnt(cateId[0]);
+		this.statCate2Cnt(cateId[1]);
+
+		return {
+			id
+		};
 	}
 
 	/**删除资讯数据 */
 	async delProduct(id) {
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		// 取出图片数据
+		let product = await ProductModel.getOne(id, '*');
+		if (!product) return;
+
+		await ProductModel.del(id);
+
+		// 异步删除图片  
+		cloudUtil.deleteFiles(product.PRODUCT_OBJ.cover[0]);
+
+		// 处理 新旧文件 
+		cloudUtil.handlerCloudFilesForForms(product.PRODUCT_FORMS, []);
+		cloudUtil.deleteFiles(product.PRODUCT_QR);
+
+		// 异步统计
+		this.statCate1Cnt(product.PRODUCT_CATE_ID[0]);
+		this.statCate2Cnt(product.PRODUCT_CATE_ID[1]);
 
 	}
 
@@ -64,7 +112,7 @@ class AdminProductService extends BaseProjectAdminService {
 		id,
 		hasImageForms
 	}) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		await ProductModel.editForms(id, 'PRODUCT_FORMS', 'PRODUCT_OBJ', hasImageForms);
 
 	}
 
@@ -80,7 +128,42 @@ class AdminProductService extends BaseProjectAdminService {
 		forms
 	}) {
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		// 重复性判断
+		let where = {
+			PRODUCT_TITLE: title,
+			_id: ['<>', id]
+		}
+		if (await ProductModel.count(where))
+			this.AppError('该标题已经存在');
+
+		// 异步处理 新旧文件
+		let product = await ProductModel.getOne(id, 'PRODUCT_FORMS,PRODUCT_CATE_ID');
+		if (!product) return;
+		cloudUtil.handlerCloudFilesForForms(product.PRODUCT_FORMS, forms);
+
+
+		// 赋值 
+		let data = {};
+		data.PRODUCT_TITLE = title;
+		data.PRODUCT_CATE_ID = cateId;
+		data.PRODUCT_CATE_NAME = cateName;
+		data.PRODUCT_ORDER = order;
+		data.PRODUCT_FIRST = first.toUpperCase() || pinyin.getFirst(title);
+
+		data.PRODUCT_OBJ = dataUtil.dbForms2Obj(forms);
+		data.PRODUCT_FORMS = forms;
+
+		await ProductModel.edit(id, data);
+
+		// 小程序码
+		let qr = await this.genDetailQr('product', id);
+		ProductModel.edit(id, { PRODUCT_QR: qr });
+
+		// 异步统计
+		this.statCate1Cnt(product.PRODUCT_CATE_ID[0]);
+		this.statCate2Cnt(product.PRODUCT_CATE_ID[1]);
+		this.statCate1Cnt(cateId[0]);
+		this.statCate2Cnt(cateId[1]);
 
 	}
 
@@ -152,16 +235,29 @@ class AdminProductService extends BaseProjectAdminService {
 
 	/**修改资讯状态 */
 	async statusProduct(id, status) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let data = {
+			PRODUCT_STATUS: status
+		}
+		let where = {
+			_id: id,
+		}
+
+		return await ProductModel.edit(where, data);
 	}
 
 	/**置顶与排序设定 */
 	async sortProduct(id, sort) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		sort = Number(sort);
+		let data = {};
+		data.PRODUCT_ORDER = sort;
+		await ProductModel.edit(id, data);
 	}
 
 	async vouchProduct(id, vouch) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		vouch = Number(vouch);
+		let data = {};
+		data.PRODUCT_VOUCH = vouch;
+		await ProductModel.edit(id, data);
 	}
 }
 

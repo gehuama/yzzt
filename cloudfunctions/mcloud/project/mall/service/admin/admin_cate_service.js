@@ -15,15 +15,24 @@ class AdminCateService extends BaseProjectAdminService {
 
 	/************** 分类1 BEGIN ********************* */
 	async vouchCate1(id, vouch) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		vouch = Number(vouch);
+		let data = {};
+		data.CATE1_VOUCH = vouch;
+		await Cate1Model.edit(id, data);
 	}
 
 	async sortCate1(id, sort) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		sort = Number(sort);
+		let data = {};
+		data.CATE1_ORDER = sort;
+		await Cate1Model.edit(id, data);
 	}
 
 	async statusCate1(id, status) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let data = {
+			CATE1_STATUS: status
+		}
+		await Cate1Model.edit(id, data);
 
 	}
 
@@ -73,7 +82,11 @@ class AdminCateService extends BaseProjectAdminService {
 	}
 
 	async delCate1(id) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		// 异步删除 
+		ProductModel.del({ PRODUCT_CATE_ID: id });
+
+		await Cate2Model.del({ CATE2_CATE1_ID: id });
+		return await Cate1Model.del(id);
 	}
 
 	async insertCate1({
@@ -81,7 +94,27 @@ class AdminCateService extends BaseProjectAdminService {
 		order,
 		forms
 	}) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		//是否重复
+		let where = {
+			CATE1_TITLE: title,
+		}
+		let cnt = await Cate1Model.count(where);
+		if (cnt)
+			this.AppError('该分类名称已经存在');
+
+
+		let data = {};
+		data.CATE1_TITLE = title;
+		data.CATE1_ORDER = order;
+
+		data.CATE1_OBJ = dataUtil.dbForms2Obj(forms);
+		data.CATE1_FORMS = forms;
+
+		let id = await Cate1Model.insert(data);
+
+		return {
+			id
+		};
 
 	}
 
@@ -100,14 +133,31 @@ class AdminCateService extends BaseProjectAdminService {
 		order,
 		forms }) {
 
-			this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		//是否重复
+		let where = {
+			CATE1_TITLE: title,
+			_id: ['<>', id]
+		}
+		let cnt = await Cate1Model.count(where);
+		if (cnt)
+			this.AppError('该分类名称已经存在');
+
+		let data = {};
+		data.CATE1_TITLE = title;
+		data.CATE1_ORDER = order;
+		data.CATE1_OBJ = dataUtil.dbForms2Obj(forms);
+		data.CATE1_FORMS = forms;
+
+		ProductModel.edit({ PRODUCT_CATE_ID: id }, { 'PRODUCT_CATE_NAME.0': title })
+
+		return await Cate1Model.edit(id, data);
 	}
 
 	async updateCate1Forms({
 		id,
 		hasImageForms
 	}) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		await Cate1Model.editForms(id, 'CATE1_FORMS', 'CATE1_OBJ', hasImageForms);
 
 	}
 	/************** 分类1 END ********************* */
@@ -115,12 +165,18 @@ class AdminCateService extends BaseProjectAdminService {
 
 	/************** 分类2 BEGIN ********************* */
 	async sortCate2(id, sort) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		sort = Number(sort);
+		let data = {};
+		data.CATE2_ORDER = sort;
+		await Cate2Model.edit(id, data);
 	}
 
 	async statusCate2(id, status) {
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let data = {
+			CATE2_STATUS: status
+		}
+		await Cate2Model.edit(id, data);
 
 	}
 
@@ -167,7 +223,18 @@ class AdminCateService extends BaseProjectAdminService {
 	}
 
 	async delCate2(id) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let cate2 = await Cate2Model.getOne(id);
+		if (!cate2) this.AppError('该二级分类不存在');
+
+		// 异步删除
+		ProductModel.del({ PRODUCT_CATE_ID: id });
+
+		// 删除本分类
+		await Cate2Model.del(id);
+
+		// 统计一级
+		let cnt = await ProductModel.count({ PRODUCT_CATE_ID: cate2.CATE2_CATE1_ID });
+		Cate1Model.edit(cate2.CATE2_CATE1_ID, { CATE1_CNT: cnt });
 
 	}
 
@@ -177,7 +244,28 @@ class AdminCateService extends BaseProjectAdminService {
 		order,
 		forms
 	}) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		//是否重复
+		let where = {
+			CATE2_TITLE: title,
+		}
+		let cnt = await Cate2Model.count(where);
+		if (cnt)
+			this.AppError('该名称已经存在');
+
+
+		let data = {};
+		data.CATE2_CATE1_ID = cate1Id;
+		data.CATE2_TITLE = title;
+		data.CATE2_ORDER = order;
+
+		data.CATE2_OBJ = dataUtil.dbForms2Obj(forms);
+		data.CATE2_FORMS = forms;
+
+		let id = await Cate2Model.insert(data);
+
+		return {
+			id
+		};
 
 	}
 
@@ -197,14 +285,33 @@ class AdminCateService extends BaseProjectAdminService {
 		forms
 	}) {
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		//是否重复
+		let where = {
+			CATE2_TITLE: title,
+			_id: ['<>', id]
+		}
+		let cnt = await Cate2Model.count(where);
+		if (cnt)
+			this.AppError('该科目名称已经存在');
+
+		// 赋值
+		let data = {};
+		data.CATE2_TITLE = title;
+		data.CATE2_ORDER = order;
+
+		data.CATE2_OBJ = dataUtil.dbForms2Obj(forms);
+		data.CATE2_FORMS = forms;
+
+		ProductModel.edit({ PRODUCT_CATE_ID: id }, { 'PRODUCT_CATE_NAME.1': title })
+
+		return await Cate2Model.edit(id, data);
 	}
 
 	async updateCate2Forms({
 		id,
 		hasImageForms
 	}) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		await Cate2Model.editForms(id, 'CATE2_FORMS', 'CATE2_OBJ', hasImageForms);
 
 	}
 	/************** 分类2 END ********************* */

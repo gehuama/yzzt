@@ -12,7 +12,7 @@
 	</view>
 
 	<view class="menu" >
-		<!--<view bind:tap="bindMenuTap" data-menu="floor" class="item {{!query&&curMenu=='floor'&&'cur'}}">楼层</view>-->
+		<!-- <view bind:tap="bindMenuTap" data-menu="floor" class="item {{!query&&curMenu=='floor'&&'cur'}}">楼层</view> -->
 		<view bind:tap="bindMenuTap" data-menu="cate" class="item {{!query&&curMenu=='cate'&&'cur'}}">业态</view>
 		<view bind:tap="bindMenuTap" data-menu="char" class="item {{!query&&curMenu=='char'&&'cur'}}">首字母</view>
 	</view>

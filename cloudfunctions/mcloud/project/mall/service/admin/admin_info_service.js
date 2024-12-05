@@ -21,14 +21,29 @@ class AdminInfoService extends BaseProjectAdminService {
 
 	/**删除数据 */
 	async delInfo(id) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let where = {
+			_id: id
+		}
+
+		// 异步处理 新旧文件
+		let info = await InfoModel.getOne(id, 'INFO_FORMS');
+		if (!info) return;
+		cloudUtil.handlerCloudFilesForForms(info.INFO_FORMS, []);
+
+		await InfoModel.del(where);
 
 	}
 
 
 	/**修改状态 */
 	async statusInfo(id, status) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let data = {
+			INFO_STATUS: status
+		}
+		let where = {
+			_id: id,
+		}
+		await InfoModel.edit(where, data);
 	}
 
 
@@ -116,7 +131,10 @@ class AdminInfoService extends BaseProjectAdminService {
 
 	/**置顶与排序设定 */
 	async sortInfo(id, sort) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		sort = Number(sort);
+		let data = {};
+		data.INFO_ORDER = sort;
+		await InfoModel.edit(id, data);
 	}
 
 	// #####################导出数据
@@ -134,7 +152,72 @@ class AdminInfoService extends BaseProjectAdminService {
 	async exportInfoDataExcel(
 		condition, fields
 	) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let where = {
+
+		};
+
+		if (condition) {
+			where = JSON.parse(decodeURIComponent(condition));
+		}
+
+		// 计算总数
+		let total = await InfoModel.count(where);
+
+		// 定义存储数据 
+		let data = [];
+
+		const options = {
+			'!cols': [
+				{ column: '序号', wch: 8 },
+				{ column: '状态', wch: 18 },
+				...dataUtil.getTitleByForm(fields),
+				{ column: '创建时间', wch: 25 },
+			]
+		};
+
+		// 标题栏
+		let ROW_TITLE = options['!cols'].map((item) => (item.column));
+		data.push(ROW_TITLE);
+
+		// 按每次100条导出数据
+		let size = 100;
+		let page = Math.ceil(total / size);
+		let orderBy = {
+			'INFO_ADD_TIME': 'asc'
+		}
+
+		let order = 0;
+		for (let i = 1; i <= page; i++) {
+			let list = await InfoModel.getList(where, '*', orderBy, i, size, false);
+			console.log('[ExportInfo] Now export cnt=' + list.list.length);
+
+			for (let k = 0; k < list.list.length; k++) {
+				let node = list.list[k];
+
+				order++;
+
+				// 数据节点
+				let arr = [];
+				arr.push(order);
+
+				arr.push(InfoModel.getDesc('STATUS', node.INFO_STATUS));
+
+				// 表单
+				for (let k = 0; k < fields.length; k++) {
+					arr.push(dataUtil.getValByForm(node.INFO_FORMS, fields[k].mark, fields[k].title));
+				}
+
+				// 创建时间
+				arr.push(timeUtil.timestamp2Time(node.INFO_ADD_TIME, 'Y-M-D h:m:s'));
+
+
+				data.push(arr);
+			}
+
+		}
+
+
+		return await exportUtil.exportDataExcel(EXPORT_INFO_DATA_KEY, '投诉与建议数据', total, data, options);
 
 	}
 }

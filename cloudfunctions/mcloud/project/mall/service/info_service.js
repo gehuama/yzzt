@@ -28,7 +28,17 @@ class InfoService extends BaseProjectService {
 		forms,
 	}) {
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		// 赋值 
+		let data = {};
+		data.INFO_USER_ID = userId;
+		data.INFO_CATE_ID = cateId;
+		data.INFO_CATE_NAME = cateName;
+		data.INFO_ORDER = order;
+
+		data.INFO_OBJ = dataUtil.dbForms2Obj(forms);
+		data.INFO_FORMS = forms;
+
+		await InfoModel.insert(data);
 	}
 
 	/**更新数据 */
@@ -41,7 +51,25 @@ class InfoService extends BaseProjectService {
 	}) {
 
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		// 异步处理 新旧文件
+		let info = await InfoModel.getOne(id, 'INFO_STATUS,INFO_FORMS');
+		if (!info) return;
+		cloudUtil.handlerCloudFilesForForms(info.INFO_FORMS, forms);
+
+		// 赋值 
+		let data = {};
+		data.INFO_CATE_ID = cateId;
+		data.INFO_CATE_NAME = cateName;
+		data.INFO_ORDER = order;
+
+		data.INFO_OBJ = dataUtil.dbForms2Obj(forms);
+		data.INFO_FORMS = forms;
+
+		let updateWhere = {
+			_id: id,
+			INFO_USER_ID: userId
+		}
+		await InfoModel.edit(updateWhere, data);
 	}
 
 	/** 取得我的分页列表 */

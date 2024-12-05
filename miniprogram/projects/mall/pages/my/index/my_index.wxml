@@ -71,12 +71,12 @@
 				</view>
 			</view>
 
-			<!--<view class="item arrow" bindtap="url" data-url="../../about/index/about_index?key=SETUP_CONTENT_CONTACT">
+			<!-- <view class="item arrow" bindtap="url" data-url="../../about/index/about_index?key=SETUP_CONTENT_CONTACT">
 				<view class="content">
 					<text class="icon-dianhua my-icon-project"></text>
 					<text class="text-black">商场服务</text>
 				</view>
-			</view>-->
+			</view> -->
 
 			<view wx:if="{{skin.IS_SUB}}" class="item arrow" bindtap="bindSetTap">
 				<view class="content">
@@ -84,12 +84,12 @@
 					<text class="text-red text-bold ">系统后台管理<text class="text-grey text-normal">（点击使用）</text></text>
 				</view>
 			</view> 
-			<!--<view wx:if="{{skin.IS_SUB}}" class="item arrow" bindtap="url" data-url="/pages/home/about/home_about">
+			<view wx:if="{{skin.IS_SUB}}" class="item arrow" bindtap="url" data-url="/pages/home/about/home_about">
 				<view class="content">
 					<text class="icon-phone my-icon-project"></text>
 					<text class="text-orange">联系作者了解更多详情</text>
 				</view>
-			</view>-->
+			</view>
 
 			<view wx:if="{{!skin.IS_SUB}}" class="item arrow" bindtap="bindSetTap">
 				<view class="content">

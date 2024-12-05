@@ -13,7 +13,7 @@ Page({
 		query: '',
 		isQuery: false,
 
-		curMenu: 'floor',
+		curMenu: 'cate',
 
 		scrollLeftCur: 0, //当前项
 		scrollRightCur: 0, // 用于实现左边联动右边
@@ -50,7 +50,7 @@ Page({
 				...res.data,
 			}, () => {
 				this.setData({
-					scrollList: this.data.floorList
+					scrollList: this.data.cateList
 				});
 			});
 		});

@@ -25,12 +25,53 @@ class AdminNewsService extends BaseProjectAdminService {
 	}) {
 
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		// 重复性判断
+		let where = {
+			NEWS_TITLE: title,
+		}
+		if (await NewsModel.count(where))
+			this.AppError('该标题已经存在');
+
+		// 赋值 
+		let data = {};
+		data.NEWS_TITLE = title;
+		data.NEWS_CATE_ID = cateId;
+		data.NEWS_CATE_NAME = cateName;
+		data.NEWS_ORDER = order;
+		data.NEWS_DESC = dataUtil.fmtText(desc, 100);
+
+		data.NEWS_OBJ = dataUtil.dbForms2Obj(forms);
+		data.NEWS_FORMS = forms;
+
+		let id = await NewsModel.insert(data);
+
+		let qr = await this.genDetailQr('news', id);
+		NewsModel.edit(id, { NEWS_QR: qr });
+
+		return {
+			id
+		};
 	}
 
 	/**删除资讯数据 */
 	async delNews(id) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let where = {
+			_id: id
+		}
+
+		// 取出图片数据
+		let news = await NewsModel.getOne(where, 'NEWS_CONTENT,NEWS_PIC,NEWS_FORMS,NEWS_QR');
+		if (!news) return;
+
+		await NewsModel.del(where);
+
+		// 异步删除图片  
+		cloudUtil.deleteFiles(news.NEWS_PIC);
+
+		// 处理 新旧文件
+		cloudUtil.handlerCloudFilesByRichEditor(news.NEWS_CONTENT, []);
+		cloudUtil.handlerCloudFilesForForms(news.NEWS_FORMS, []);
+		cloudUtil.deleteFiles(news.NEWS_QR);
 
 
 	}
@@ -53,7 +94,7 @@ class AdminNewsService extends BaseProjectAdminService {
 		id,
 		hasImageForms
 	}) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		await NewsModel.editForms(id, 'NEWS_FORMS', 'NEWS_OBJ', hasImageForms);
 
 	}
 
@@ -67,7 +108,17 @@ class AdminNewsService extends BaseProjectAdminService {
 		content // 富文本数组
 	}) {
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		// 获取数据库里的图片数据
+		let news = await NewsModel.getOne(id, 'NEWS_CONTENT');
+
+		// 处理 新旧文件
+		content = await cloudUtil.handlerCloudFilesByRichEditor(news.NEWS_CONTENT, content);
+
+		//更新数据库
+		let data = {
+			NEWS_CONTENT: content
+		};
+		await NewsModel.edit(id, data);
 
 	}
 
@@ -80,7 +131,17 @@ class AdminNewsService extends BaseProjectAdminService {
 		imgList // 图片数组
 	}) {
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		// 获取数据库里的图片数据
+		let news = await NewsModel.getOne(id, 'NEWS_PIC');
+
+		// 处理 新旧文件
+		let picList = await cloudUtil.handlerCloudFiles(news.NEWS_PIC, imgList);
+
+		//更新数据库
+		let data = {
+			NEWS_PIC: picList
+		};
+		await NewsModel.edit(id, data);
 
 	}
 
@@ -96,7 +157,36 @@ class AdminNewsService extends BaseProjectAdminService {
 		forms
 	}) {
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		// 重复性判断
+		let where = {
+			NEWS_TITLE: title,
+			_id: ['<>', id]
+		}
+		if (await NewsModel.count(where))
+			this.AppError('该标题已经存在');
+
+		// 异步处理 新旧文件
+		let oldForms = await NewsModel.getOneField(id, 'NEWS_FORMS');
+		if (!oldForms) return;
+		cloudUtil.handlerCloudFilesForForms(oldForms, forms);
+
+
+		// 赋值 
+		let data = {};
+		data.NEWS_TITLE = title;
+		data.NEWS_CATE_ID = cateId;
+		data.NEWS_CATE_NAME = cateName;
+		data.NEWS_ORDER = order;
+		data.NEWS_DESC = dataUtil.fmtText(desc, 100);
+
+		data.NEWS_OBJ = dataUtil.dbForms2Obj(forms);
+		data.NEWS_FORMS = forms;
+
+		await NewsModel.edit(id, data);
+
+		// 小程序码
+		let qr = await this.genDetailQr('news', id);
+		NewsModel.edit(id, { NEWS_QR: qr });
 
 	}
 
@@ -157,12 +247,22 @@ class AdminNewsService extends BaseProjectAdminService {
 
 	/**修改资讯状态 */
 	async statusNews(id, status) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let data = {
+			NEWS_STATUS: status
+		}
+		let where = {
+			_id: id,
+		}
+
+		return await NewsModel.edit(where, data);
 	}
 
 	/**置顶与排序设定 */
 	async sortNews(id, sort) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		sort = Number(sort);
+		let data = {};
+		data.NEWS_ORDER = sort;
+		await NewsModel.edit(id, data);
 	}
 }
 

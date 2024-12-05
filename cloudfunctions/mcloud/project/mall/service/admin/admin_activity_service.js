@@ -83,7 +83,10 @@ class AdminActivityService extends BaseProjectAdminService {
 
 	/**置顶与排序设定 */
 	async sortActivity(id, sort) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		sort = Number(sort);
+		let data = {};
+		data.ACTIVITY_ORDER = sort;
+		await ActivityModel.edit(id, data);
 	}
 
 	/**获取信息 */
@@ -103,7 +106,8 @@ class AdminActivityService extends BaseProjectAdminService {
 
 	/**首页设定 */
 	async vouchActivity(id, vouch) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let data = { ACTIVITY_VOUCH: Number(vouch) };
+		await ActivityModel.edit(id, data);
  
 	}
 
@@ -130,20 +134,78 @@ class AdminActivityService extends BaseProjectAdminService {
 		joinForms,
 	}) {
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		// 重复性判断
+		let where = {
+			ACTIVITY_TITLE: title,
+			ACTIVITY_CATE_ID: cateId
+		}
+		if (await ActivityModel.count(where))
+			this.AppError('该标题已经存在');
+
+		// 赋值 
+		let data = {};
+
+		data.ACTIVITY_TITLE = title;
+		data.ACTIVITY_CATE_ID = cateId;
+		data.ACTIVITY_CATE_NAME = cateName;
+		data.ACTIVITY_ORDER = order;
+
+		data.ACTIVITY_MAX_CNT = maxCnt;
+		data.ACTIVITY_START = timeUtil.time2Timestamp(start + ':00');
+		data.ACTIVITY_END = timeUtil.time2Timestamp(end + ':00');
+
+		data.ACTIVITY_ADDRESS = address;
+		data.ACTIVITY_ADDRESS_GEO = addressGeo;
+
+		data.ACTIVITY_STOP = timeUtil.time2Timestamp(stop + ':00');
+		data.ACTIVITY_CANCEL_SET = cancelSet;
+		data.ACTIVITY_CHECK_SET = checkSet;
+		data.ACTIVITY_IS_MENU = isMenu;
+
+		data.ACTIVITY_OBJ = dataUtil.dbForms2Obj(forms);
+		data.ACTIVITY_FORMS = forms;
+
+		data.ACTIVITY_JOIN_FORMS = joinForms;
+
+		let id = await ActivityModel.insert(data);
+
+		let qr = await this.genDetailQr('activity', id);
+		ActivityModel.edit(id, { ACTIVITY_QR: qr });
+
+		return {
+			id
+		};
 	}
 
 	//#############################   
 	/** 清空 */
 	async clearActivityAll(activityId) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let data = {
+			ACTIVITY_JOIN_CNT: 0 
+		}
+		await ActivityModel.edit(activityId, data);
+		await ActivityJoinModel.del({ ACTIVITY_JOIN_ACTIVITY_ID: activityId });
 
 	}
 
 
 	/**删除数据 */
 	async delActivity(id) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let where = {
+			_id: id
+		}
+
+		// 异步处理 新旧文件
+		let activity = await ActivityModel.getOne(id, 'ACTIVITY_FORMS,ACTIVITY_QR');
+		if (!activity) return;
+		cloudUtil.handlerCloudFilesForForms(activity.ACTIVITY_FORMS, []);
+		cloudUtil.deleteFiles([activity.ACTIVITY_QR]);
+
+		await ActivityModel.del(where);
+ 
+
+		// 删除报名用户
+		ActivityJoinModel.del({ ACTIVITY_JOIN_ACTIVITY_ID: id });
 
 	}
 	
@@ -152,7 +214,7 @@ class AdminActivityService extends BaseProjectAdminService {
 		id,
 		hasImageForms
 	}) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		await ActivityModel.editForms(id, 'ACTIVITY_FORMS', 'ACTIVITY_OBJ', hasImageForms);
  
 	}
 
@@ -180,12 +242,76 @@ class AdminActivityService extends BaseProjectAdminService {
 		joinForms
 	}) {
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		// 重复性判断
+		let where = {
+			ACTIVITY_TITLE: title,
+			ACTIVITY_CATE_ID: cateId,
+			_id: ['<>', id]
+		}
+
+		if (await ActivityModel.count(where))
+			this.AppError('该标题已经存在');
+
+
+		// 异步处理 新旧文件
+		let oldForms = await ActivityModel.getOneField(id, 'ACTIVITY_FORMS');
+		if (!oldForms) return;
+		cloudUtil.handlerCloudFilesForForms(oldForms, forms);
+
+		// 赋值 
+		let data = {};
+		data.ACTIVITY_TITLE = title;
+		data.ACTIVITY_CATE_ID = cateId;
+		data.ACTIVITY_CATE_NAME = cateName;
+		data.ACTIVITY_ORDER = order;
+
+		data.ACTIVITY_MAX_CNT = maxCnt;
+		data.ACTIVITY_START = timeUtil.time2Timestamp(start + ':00');
+		data.ACTIVITY_END = timeUtil.time2Timestamp(end + ':00');
+		data.ACTIVITY_STOP = timeUtil.time2Timestamp(stop + ':00');
+
+		data.ACTIVITY_ADDRESS = address;
+		data.ACTIVITY_ADDRESS_GEO = addressGeo;
+
+		data.ACTIVITY_CANCEL_SET = cancelSet;
+		data.ACTIVITY_CHECK_SET = checkSet;
+		data.ACTIVITY_IS_MENU = isMenu;
+
+		data.ACTIVITY_OBJ = dataUtil.dbForms2Obj(forms);
+		data.ACTIVITY_FORMS = forms;
+
+		data.ACTIVITY_JOIN_FORMS = joinForms;
+
+		let updateWhere = {
+			_id: id
+		}
+		await ActivityModel.edit(updateWhere, data);
+ 
+
+		// 小程序码
+		let qr = await this.genDetailQr('activity', id);
+		ActivityModel.edit(id, { ACTIVITY_QR: qr });
+
+		// 状态变更返回
+		let activity = await ActivityModel.getOne(id);
+		let activityService = new ActivityService();
+		return { statusDesc: activityService.getJoinStatusDesc(activity) };
 	}
 
 	/**修改状态 */
 	async statusActivity(id, status) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let data = {
+			ACTIVITY_STATUS: status
+		}
+		let where = {
+			_id: id,
+		}
+
+		await ActivityModel.edit(where, data);
+
+		let activity = await ActivityModel.getOne(id);
+		let activityService = new ActivityService();
+		return { statusDesc: activityService.getJoinStatusDesc(activity) };
 	}
 
 	//#############################
@@ -240,35 +366,127 @@ class AdminActivityService extends BaseProjectAdminService {
 	/**修改报名状态  
 	 */
 	async statusActivityJoin(activityJoinId, status, reason = '') {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let where = {
+			_id: activityJoinId,
+			ACTIVITY_JOIN_STATUS: ['<>', status]
+		}
+		let activityJoin = await ActivityJoinModel.getOne(where);
+		if (!activityJoin) this.AppError('找不到该报名记录');
+
+		let data = {
+			ACTIVITY_JOIN_STATUS: status,
+			ACTIVITY_JOIN_IS_CHECKIN: 0, //取消签到
+
+			ACTIVITY_JOIN_REASON: (status == 99) ? dataUtil.fmtText(reason) : '',
+
+		}
+		await ActivityJoinModel.edit(where, data);
+
+		// 重新统计  
+		let activityService = new ActivityService();
+		activityService.statActivityJoin(activityJoin.ACTIVITY_JOIN_ACTIVITY_ID); 
 
 	}
 
 
 	/** 取消某项目的所有报名记录 */
 	async cancelActivityJoinAll(activityId, reason) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let where = {
+			ACTIVITY_JOIN_ACTIVITY_ID: activityId,
+			ACTIVITY_JOIN_STATUS: ['in', [ActivityJoinModel.STATUS.WAIT, ActivityJoinModel.STATUS.SUCC]]
+		};
+
+		let data = {
+			ACTIVITY_JOIN_STATUS: ActivityJoinModel.STATUS.ADMIN_CANCEL,
+			ACTIVITY_JOIN_REASON: dataUtil.fmtText(reason)
+		}
+
+		// 更改数据库
+		await ActivityJoinModel.edit(where, data);
+
+		// 重新统计  
+		let activityService = new ActivityService();
+		activityService.statActivityJoin(activityId); 
 	}
 
 	/** 删除报名 */
 	async delActivityJoin(activityJoinId) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let activityJoin = await ActivityJoinModel.getOne(activityJoinId);
+		if (!activityJoin) this.AppError('找不到该记录');
+
+		await ActivityJoinModel.del(activityJoinId);
+
+		// 重新统计  
+		let activityService = new ActivityService();
+		activityService.statActivityJoin(activityJoin.ACTIVITY_JOIN_ACTIVITY_ID); 
 
 	}
 
 	/** 自助签到码 */
 	async genActivitySelfCheckinQr(page, activityId) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		//生成小程序qr buffer
+		let cloud = cloudBase.getCloud();
+
+		if (page.startsWith('/projects/')) page = page.replace('/projects/', 'projects/');
+
+		let result = await cloud.openapi.wxacode.getUnlimited({
+			scene: activityId,
+			width: 280,
+			check_path: false,
+			env_version: 'release', //trial,develop
+			page
+		});
+
+		let upload = await cloud.uploadFile({
+			cloudPath: 'activity/usercheckin/' + activityId + '.png',
+			fileContent: result.buffer,
+		});
+
+		if (!upload || !upload.fileID) return;
+
+		return upload.fileID;
 	}
 
 	/** 管理员按钮核销 */
 	async checkinActivityJoin(activityJoinId, flag) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let activityJoin = await ActivityJoinModel.getOne(activityJoinId);
+
+		if (!activityJoin)
+			this.AppError('没有该用户的报名记录，核销失败');
+
+		if (activityJoin.ACTIVITY_JOIN_STATUS != ActivityJoinModel.STATUS.SUCC)
+			this.AppError('该用户未报名成功，核销失败');
+
+
+		let data = {
+			ACTIVITY_JOIN_IS_CHECKIN: flag,
+			ACTIVITY_JOIN_CHECKIN_TIME: this._timestamp,
+		};
+		await ActivityJoinModel.edit(activityJoinId, data);
 	}
 
 	/** 管理员扫码核销 */
 	async scanActivityJoin(activityId, code) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let where = {
+			ACTIVITY_JOIN_ACTIVITY_ID: activityId,
+			ACTIVITY_JOIN_CODE: code
+		}
+		let activityJoin = await ActivityJoinModel.getOne(where);
+
+		if (!activityJoin)
+			this.AppError('没有该用户的报名记录，核销失败');
+
+		if (activityJoin.ACTIVITY_JOIN_STATUS != ActivityJoinModel.STATUS.SUCC)
+			this.AppError('该用户未报名成功，核销失败');
+
+		if (activityJoin.ACTIVITY_JOIN_IS_CHECKIN == 1)
+			this.AppError('该用户已签到/核销，无须重复核销');
+
+		let data = {
+			ACTIVITY_JOIN_IS_CHECKIN: 1,
+			ACTIVITY_JOIN_CHECKIN_TIME: this._timestamp,
+		};
+		await ActivityJoinModel.edit(where, data);
 	}
 
 	// #####################导出报名数据
@@ -287,7 +505,81 @@ class AdminActivityService extends BaseProjectAdminService {
 		activityId,
 		status
 	}) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		// 取得的表单设置
+		let activity = await ActivityModel.getOne(activityId, 'ACTIVITY_JOIN_FORMS');
+		if (!activity) return;
+		let formSet = activity.ACTIVITY_JOIN_FORMS;
+
+		let where = {
+			ACTIVITY_JOIN_ACTIVITY_ID: activityId,
+		};
+		if (status != 999)
+			where.ACTIVITY_JOIN_STATUS = status;
+
+
+		// 计算总数
+		let total = await ActivityJoinModel.count(where);
+
+		// 定义存储数据 
+		let data = [];
+
+		const options = {
+			'!cols': [
+				{ column: '序号', wch: 8 },
+				{ column: '状态', wch: 18 },
+				...dataUtil.getTitleByForm(formSet),
+				{ column: '创建时间', wch: 25 },
+				{ column: '是否签到', wch: 15 }
+			]
+		};
+
+		// 标题栏
+		let ROW_TITLE = options['!cols'].map((item) => (item.column));
+		data.push(ROW_TITLE);
+
+		// 按每次100条导出数据
+		let size = 100;
+		let page = Math.ceil(total / size);
+		let orderBy = {
+			'ACTIVITY_JOIN_EDIT_TIME': 'asc'
+		}
+
+		let order = 0;
+		for (let i = 1; i <= page; i++) {
+			let list = await ActivityJoinModel.getList(where, '*', orderBy, i, size, false);
+			console.log('[ExportActivityJoin] Now export cnt=' + list.list.length);
+
+			for (let k = 0; k < list.list.length; k++) {
+				let node = list.list[k];
+
+				order++;
+
+				// 数据节点
+				let arr = [];
+				arr.push(order);
+
+				arr.push(ActivityJoinModel.getDesc('STATUS', node.ACTIVITY_JOIN_STATUS));
+
+				// 表单
+				for (let k = 0; k < formSet.length; k++) {
+					arr.push(dataUtil.getValByForm(node.ACTIVITY_JOIN_FORMS, formSet[k].mark, formSet[k].title));
+				}
+
+				// 创建时间
+				arr.push(timeUtil.timestamp2Time(node.ACTIVITY_JOIN_ADD_TIME, 'Y-M-D h:m:s'));
+
+				if (node.ACTIVITY_JOIN_STATUS == 1 && node.ACTIVITY_JOIN_IS_CHECKIN == 1) {
+					arr.push('已签到')
+				} else {
+					arr.push('')
+				}
+
+				data.push(arr);
+			}
+
+		}
+
+		return await exportUtil.exportDataExcel(EXPORT_ACTIVITY_JOIN_DATA_KEY, '活动报名数据', total, data, options);
 
 	}
 }

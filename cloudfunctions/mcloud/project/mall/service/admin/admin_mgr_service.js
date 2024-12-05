@@ -58,7 +58,8 @@ class AdminMgrService extends BaseProjectAdminService {
 	}
 
 	async clearLog() {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let where = {}
+		await LogModel.del(where);
 	}
 
 	/** 取得日志分页列表 */
@@ -154,7 +155,15 @@ class AdminMgrService extends BaseProjectAdminService {
 
 	/** 删除管理员 */
 	async delMgr(id, myAdminId) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		if (id == myAdminId)
+			this.AppError('不能删除自己的账号');
+
+		let where = {
+			_id: id,
+			ADMIN_TYPE: 0, //只能删除一般 
+		}
+
+		return await AdminModel.del(where);
 	}
 
 	/** 添加新的管理员 */
@@ -164,13 +173,37 @@ class AdminMgrService extends BaseProjectAdminService {
 		phone,
 		password
 	}) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		//是否重复  
+		let where = {
+			ADMIN_NAME: name,
+		}
+		let cnt = await AdminModel.count(where);
+		if (cnt)
+			this.AppError('该账号已经存在');
+
+		let data = {
+			ADMIN_NAME: name,
+			ADMIN_DESC: desc,
+			ADMIN_PHONE: phone,
+			ADMIN_PASSWORD: md5Lib.md5(password)
+		}
+		return await AdminModel.insert(data);
 
 	}
 
 	/** 修改状态 */
 	async statusMgr(id, status, myAdminId) {
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		if (id == myAdminId)
+			this.AppError('不能删除自己的账号');
+
+		let data = {
+			ADMIN_STATUS: status
+		}
+		let where = {
+			_id: id,
+			ADMIN_TYPE: 0, //只能修改一般 
+		}
+		return await AdminModel.edit(where, data);
 	} 
  
 
@@ -195,13 +228,42 @@ class AdminMgrService extends BaseProjectAdminService {
 		password
 	}) {
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		//是否重复
+		let where = {
+			ADMIN_NAME: name,
+			_id: ['<>', id]
+		}
+		let cnt = await AdminModel.count(where);
+		if (cnt)
+			this.AppError('该账号已经存在');
+
+
+		let data = {
+			ADMIN_NAME: name,
+			ADMIN_DESC: desc,
+			ADMIN_PHONE: phone
+		}
+
+		if (password) data.ADMIN_PASSWORD = md5Lib.md5(password);
+
+		return await AdminModel.edit(id, data);
 	}
 
 	/** 修改自身密码 */
 	async pwdtMgr(adminId, oldPassword, password) {
 
-		this.AppError('[商场]该功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let where = {
+			_id: adminId,
+			ADMIN_PASSWORD: md5Lib.md5(oldPassword),
+		}
+		let admin = await AdminModel.getOne(where);
+		if (!admin)
+			this.AppError('旧密码错误');
+
+		let data = {
+			ADMIN_PASSWORD: md5Lib.md5(password),
+		}
+		return await AdminModel.edit(adminId, data);
 	}
 }
 

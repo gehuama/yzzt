@@ -82,7 +82,7 @@
 		"backgroundColor": "#FFFFFF",
 		"color": "#999999",
 		"selectedColor": "#CF9F79",
-		"list": [
+    "list": [
 			{
 				"pagePath": "projects/mall/pages/default/index/default_index",
 				"text": "首页",
